@@ -1,0 +1,1 @@
+# Intel_OpenCV_Project_Team2
