@@ -28,8 +28,21 @@ private slots:
     void updateFrame();
     void on_captureButton_clicked();
     void on_doneButton_clicked();
-    void on_frame1Button_clicked();
-    void on_pororoFrameButton_clicked();
+    void applyFrame1();
+    void applyPororoFrame();
+
+    // New Filter and other slots
+    void applyBeautyFilter();
+    void applyFilmGrainFilter();
+    void applySepiaFilter();
+    void saveImage();
+    void resetToOriginal();
+
+    void onManualFrameButtonClicked(bool checked);
+    void onAddBorderFrameClicked();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     Ui::MainWindow *ui;
@@ -43,6 +56,22 @@ private:
     QPushButton *pororoFrameButton;
     int appliedFrameType; // 0 = none, 1 = frame1, 2 = pororo
     cv::CascadeClassifier face_cascade;
+    cv::Mat displayedImage; // To store the image currently being displayed
+
+    // Buttons for new filters and saving
+    QPushButton *beautyFilterButton;
+    QPushButton *filmGrainFilterButton;
+    QPushButton *sepiaFilterButton;
+    QPushButton *saveButton;
+    QPushButton *resetButton;
+
+    // For manual frame drawing
+    QPushButton *manualFrameButton;
+    bool m_isDrawingMode;
+    QRect m_drawnRect; // Stores the rectangle drawn by the user
+
+    // For border frame
+    QPushButton *addBorderFrameButton;
 
 private:
     void applyFaceMask(const QString &maskPath, int maskType);
