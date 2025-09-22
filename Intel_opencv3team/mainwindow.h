@@ -53,6 +53,9 @@ protected:
     void on_filterCoolButton_clicked();
     void on_filterCinemaButton_clicked();
     void on_saveButton_clicked();
+<<<<<<< HEAD
+>>>>>>> 4c01d01d0ae998fe85c5bc1917ab0ac547740c40
+=======
 >>>>>>> 4c01d01d0ae998fe85c5bc1917ab0ac547740c40
 
 private:

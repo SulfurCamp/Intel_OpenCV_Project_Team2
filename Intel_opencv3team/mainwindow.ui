@@ -15,7 +15,11 @@
   </property>
   <widget class="QWidget" name="centralwidget">
 <<<<<<< HEAD
+<<<<<<< HEAD
    <layout class="QVBoxLayout" name="verticalLayout" stretch="2,1,0">
+=======
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
+>>>>>>> 4c01d01d0ae998fe85c5bc1917ab0ac547740c40
 =======
    <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
 >>>>>>> 4c01d01d0ae998fe85c5bc1917ab0ac547740c40
