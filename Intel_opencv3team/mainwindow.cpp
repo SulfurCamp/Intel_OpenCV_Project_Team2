@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     // -----------------------------------------
 
     // --- Add Pororo Frame Button Programmatically ---
-    pororoFrameButton = new QPushButton("뽀로로 프레임", this);
+    pororoFrameButton = new QPushButton("도라에몽 프레임", this);
     pororoFrameButton->setEnabled(false);
     ui->frameButtonLayout->insertWidget(2, pororoFrameButton); // Insert next to 짱구 button
     connect(pororoFrameButton, &QPushButton::clicked, this, &MainWindow::on_pororoFrameButton_clicked);
@@ -129,7 +129,7 @@ void MainWindow::on_doneButton_clicked()
 
     if (success && !panorama.empty()) {
         this->currentPanorama = panorama.clone(); // Save the original BGR panorama
-        ui->statusbar->showMessage("Stitching successful!", 5000);
+        ui->statusbar->showMessage("파노라마 완성!", 5000);
 
         // Convert result to displayable format
         cv::Mat displayablePanorama;
@@ -173,7 +173,7 @@ void MainWindow::applyFaceMask(const QString &maskPath, int maskType)
         cv::cvtColor(currentPanorama, displayablePanorama, cv::COLOR_BGR2RGB);
         QImage qimg(displayablePanorama.data, displayablePanorama.cols, displayablePanorama.rows, displayablePanorama.step, QImage::Format_RGB888);
         ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
-        ui->statusbar->showMessage("Mask removed.", 3000);
+        ui->statusbar->showMessage("프레임 제거", 3000);
         appliedFrameType = 0;
         return;
     }
@@ -233,7 +233,7 @@ void MainWindow::applyFaceMask(const QString &maskPath, int maskType)
     QImage qimg(maskedPanorama.data, maskedPanorama.cols, maskedPanorama.rows, maskedPanorama.step, QImage::Format_RGB888);
     ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
 
-    ui->statusbar->showMessage(QString("Applied %1 mask to %2 face(s).").arg(maskPath).arg(faces.size()), 3000);
+    ui->statusbar->showMessage(QString("프레임 합성"), 3000);
     appliedFrameType = maskType;
 }
 
@@ -245,5 +245,5 @@ void MainWindow::on_frame1Button_clicked()
 
 void MainWindow::on_pororoFrameButton_clicked()
 {
-    applyFaceMask("pororo.png", 2);
+    applyFaceMask("doraframe.png", 2);
 }
