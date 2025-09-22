@@ -21,8 +21,9 @@ FORMS += \
     mainwindow.ui
 
 # OpenCV Integration
-INCLUDEPATH += /usr/local/include/opencv4
-LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_stitching
+# Use pkg-config to find OpenCV libraries automatically
+CONFIG += link_pkgconfig
+PKGCONFIG += opencv4
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

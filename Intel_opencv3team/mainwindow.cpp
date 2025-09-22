@@ -4,6 +4,7 @@
 
 #include <QMessageBox>
 #include <QPixmap>
+#include <QFileDialog>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <QPushButton>
@@ -37,9 +38,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(frame1Button, &QPushButton::clicked, this, &MainWindow::on_frame1Button_clicked);
     // -----------------------------------------
 
-    // Initially disable the "done" button
+    // Initially disable buttons
     ui->doneButton->setEnabled(false);
     ui->displayLabel->setScaledContents(true);
+    ui->filterWidget->setEnabled(false); // Disable the whole filter widget
 }
 
 MainWindow::~MainWindow()
@@ -48,6 +50,17 @@ MainWindow::~MainWindow()
         cap.release();
     }
     delete ui;
+}
+
+void MainWindow::displayImage(const cv::Mat &image)
+{
+    if (image.empty()) return;
+
+    cv::Mat displayableImage;
+    // Convert result to displayable format
+    cv::cvtColor(image, displayableImage, cv::COLOR_BGR2RGB);
+    QImage qimg(displayableImage.data, displayableImage.cols, displayableImage.rows, displayableImage.step, QImage::Format_RGB888);
+    ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
 }
 
 void MainWindow::updateFrame()
@@ -78,7 +91,9 @@ void MainWindow::on_captureButton_clicked()
         ui->captureButton->setText("촬영");
         panoramaResultDisplayed = false;
         frame1Button->setEnabled(false); // Disable frame button
-        currentPanorama.release(); // Clear the stored panorama
+        ui->filterWidget->setEnabled(false); // Disable filter widget
+        originalPanorama.release(); // Clear the stored panorama
+        currentDisplayImage.release();
         ui->statusbar->clearMessage();
         return; // Exit without capturing a frame this time
     }
@@ -112,16 +127,14 @@ void MainWindow::on_doneButton_clicked()
     cv::Mat panorama = stitchImages(capturedImages, success);
 
     if (success && !panorama.empty()) {
-        this->currentPanorama = panorama.clone(); // Save the original BGR panorama
+        this->originalPanorama = panorama.clone(); // Save the original BGR panorama
+        this->currentDisplayImage = this->originalPanorama.clone(); // Initially, display is original
         ui->statusbar->showMessage("Stitching successful!", 5000);
 
-        // Convert result to displayable format
-        cv::Mat displayablePanorama;
-        cv::cvtColor(this->currentPanorama, displayablePanorama, cv::COLOR_BGR2RGB);
-        QImage qimg(displayablePanorama.data, displayablePanorama.cols, displayablePanorama.rows, displayablePanorama.step, QImage::Format_RGB888);
-        ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
+        displayImage(this->currentDisplayImage);
 
         frame1Button->setEnabled(true); // Enable the frame button
+        ui->filterWidget->setEnabled(true); // Enable the filter widget
 
     } else {
         QMessageBox msgBox(this);
@@ -144,7 +157,7 @@ void MainWindow::on_doneButton_clicked()
 
 void MainWindow::on_frame1Button_clicked()
 {
-    if (currentPanorama.empty()) {
+    if (originalPanorama.empty()) {
         QMessageBox::warning(this, "Error", "No panorama image to apply a frame to.");
         return;
     }
@@ -162,7 +175,7 @@ void MainWindow::on_frame1Button_clicked()
     }
 
     // The panorama to draw on
-    cv::Mat framedPanorama = currentPanorama.clone();
+    cv::Mat framedPanorama = originalPanorama.clone();
 
     // Resize frame to match panorama
     cv::resize(frameImage, frameImage, framedPanorama.size());
@@ -177,10 +190,98 @@ void MainWindow::on_frame1Button_clicked()
     // Overlay the frame onto the panorama where the alpha mask is non-zero
     frame_bgr.copyTo(framedPanorama, alpha_mask);
 
-    // Convert the final result for display
-    cv::cvtColor(framedPanorama, framedPanorama, cv::COLOR_BGR2RGB);
-    QImage qimg(framedPanorama.data, framedPanorama.cols, framedPanorama.rows, framedPanorama.step, QImage::Format_RGB888);
-    ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
+    // Update the current display image and show it
+    this->currentDisplayImage = framedPanorama.clone();
+    displayImage(this->currentDisplayImage);
 
     ui->statusbar->showMessage("Frame applied.", 3000);
+}
+
+// --- Filter Implementations ---
+
+void MainWindow::on_filterOriginalButton_clicked()
+{
+    if (originalPanorama.empty()) return;
+    this->currentDisplayImage = this->originalPanorama.clone();
+    displayImage(this->currentDisplayImage);
+    ui->statusbar->showMessage("원본 이미지 표시.", 3000);
+}
+
+void MainWindow::on_filterBeautyButton_clicked()
+{
+    if (originalPanorama.empty()) return;
+    cv::bilateralFilter(originalPanorama, currentDisplayImage, 15, 80, 80);
+    // Slightly increase brightness
+    currentDisplayImage.convertTo(currentDisplayImage, -1, 1.1, 10);
+    displayImage(currentDisplayImage);
+    ui->statusbar->showMessage("뽀샤시 필터 적용.", 3000);
+}
+
+void MainWindow::on_filterFilmButton_clicked()
+{
+    if (originalPanorama.empty()) return;
+    cv::Mat temp = originalPanorama.clone();
+    // Add grain
+    cv::Mat noise = cv::Mat(temp.size(), temp.type());
+    cv::randn(noise, 0, 15);
+    cv::add(temp, noise, temp);
+    // Desaturate
+    cv::cvtColor(temp, temp, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(temp, temp, cv::COLOR_GRAY2BGR);
+    // Blend with original
+    cv::addWeighted(originalPanorama, 0.3, temp, 0.7, 0, currentDisplayImage);
+    displayImage(currentDisplayImage);
+    ui->statusbar->showMessage("필름카메라 필터 적용.", 3000);
+}
+
+void MainWindow::on_filterCoolButton_clicked()
+{
+    if (originalPanorama.empty()) return;
+    cv::Mat temp = originalPanorama.clone();
+    std::vector<cv::Mat> channels;
+    cv::split(temp, channels);
+    // Decrease Red, Increase Blue
+    channels[2] = channels[2] * 0.9;
+    channels[0] = channels[0] * 1.1;
+    cv::merge(channels, currentDisplayImage);
+    displayImage(currentDisplayImage);
+    ui->statusbar->showMessage("쿨톤 필터 적용.", 3000);
+}
+
+void MainWindow::on_filterCinemaButton_clicked()
+{
+    if (originalPanorama.empty()) return;
+    // Teal and Orange look
+    cv::Mat temp = originalPanorama.clone();
+    // Increase contrast
+    temp.convertTo(temp, -1, 1.2, -20);
+    std::vector<cv::Mat> channels;
+    cv::split(temp, channels);
+    // Add orange to highlights (increase R, decrease B)
+    // Add teal to shadows (increase B, decrease R)
+    // This is a simplified version
+    channels[2] += 25; // More orange/red
+    channels[0] -= 15; // Less blue
+    cv::merge(channels, currentDisplayImage);
+    displayImage(currentDisplayImage);
+    ui->statusbar->showMessage("시네마틱 필터 적용.", 3000);
+}
+
+void MainWindow::on_saveButton_clicked()
+{
+    if (currentDisplayImage.empty()) {
+        QMessageBox::warning(this, "저장 오류", "저장할 이미지가 없습니다.");
+        return;
+    }
+
+    QString fileName = QFileDialog::getSaveFileName(this, "이미지 저장", "", "PNG Images (*.png);;JPEG Images (*.jpg *.jpeg)");
+
+    if (!fileName.isEmpty()) {
+        bool success = cv::imwrite(fileName.toStdString(), currentDisplayImage);
+        if (success) {
+            ui->statusbar->showMessage(QString("이미지가 %1 에 저장되었습니다.").arg(fileName), 5000);
+        } else {
+            QMessageBox::warning(this, "저장 오류", "이미지를 저장하는 데 실패했습니다.");
+        }
+    }
 }

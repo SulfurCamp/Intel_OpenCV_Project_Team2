@@ -14,7 +14,7 @@
    <string>Panorama Stitcher</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="2,1">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
     <item>
      <widget class="QLabel" name="displayLabel">
       <property name="text">
@@ -23,6 +23,54 @@
       <property name="alignment">
        <set>Qt::AlignCenter</set>
       </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="filterWidget" native="true">
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QPushButton" name="filterBeautyButton">
+         <property name="text">
+          <string>뽀샤시</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="filterFilmButton">
+         <property name="text">
+          <string>필름카메라</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="filterCoolButton">
+         <property name="text">
+          <string>쿨톤</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="filterCinemaButton">
+         <property name="text">
+          <string>시네마틱</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="filterOriginalButton">
+         <property name="text">
+          <string>원본</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="saveButton">
+         <property name="text">
+          <string>저장</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
     <item>
