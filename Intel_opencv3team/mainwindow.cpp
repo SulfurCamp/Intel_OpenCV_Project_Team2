@@ -6,6 +6,7 @@
 #include <QPixmap>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/objdetect.hpp>
 #include <QPushButton>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -14,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    appliedFrameType = 0;
     panoramaResultDisplayed = false;
     captureCount = 0;
     ui->statusbar->showMessage(QString("촬영 횟수: %1").arg(captureCount));
@@ -31,15 +33,27 @@ MainWindow::MainWindow(QWidget *parent)
     timer->start(33); // Approx. 30 FPS
 
     // --- Add Frame 1 Button Programmatically ---
-    frame1Button = new QPushButton("프레임1", this);
+    frame1Button = new QPushButton("미니언 프레임", this);
     frame1Button->setEnabled(false);
-    ui->horizontalLayout->insertWidget(2, frame1Button); // Insert between doneButton and spacer
+    ui->frameButtonLayout->insertWidget(1, frame1Button); // Insert between spacers
     connect(frame1Button, &QPushButton::clicked, this, &MainWindow::on_frame1Button_clicked);
     // -----------------------------------------
+
+    // --- Add Pororo Frame Button Programmatically ---
+    pororoFrameButton = new QPushButton("뽀로로 프레임", this);
+    pororoFrameButton->setEnabled(false);
+    ui->frameButtonLayout->insertWidget(2, pororoFrameButton); // Insert next to 짱구 button
+    connect(pororoFrameButton, &QPushButton::clicked, this, &MainWindow::on_pororoFrameButton_clicked);
+    // ---------------------------------------------
 
     // Initially disable the "done" button
     ui->doneButton->setEnabled(false);
     ui->displayLabel->setScaledContents(true);
+
+    // Load face cascade
+    if (!face_cascade.load("haarcascade_frontalface_default.xml")) {
+        QMessageBox::critical(this, "Face Cascade Error", "Could not load face cascade file. Make sure haarcascade_frontalface_default.xml is in the build directory.");
+    }
 }
 
 MainWindow::~MainWindow()
@@ -77,7 +91,9 @@ void MainWindow::on_captureButton_clicked()
         timer->start();
         ui->captureButton->setText("촬영");
         panoramaResultDisplayed = false;
+        appliedFrameType = 0;
         frame1Button->setEnabled(false); // Disable frame button
+        pororoFrameButton->setEnabled(false);
         currentPanorama.release(); // Clear the stored panorama
         ui->statusbar->clearMessage();
         return; // Exit without capturing a frame this time
@@ -121,7 +137,9 @@ void MainWindow::on_doneButton_clicked()
         QImage qimg(displayablePanorama.data, displayablePanorama.cols, displayablePanorama.rows, displayablePanorama.step, QImage::Format_RGB888);
         ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
 
+        appliedFrameType = 0; // Reset frame state
         frame1Button->setEnabled(true); // Enable the frame button
+        pororoFrameButton->setEnabled(true);
 
     } else {
         QMessageBox msgBox(this);
@@ -142,45 +160,90 @@ void MainWindow::on_doneButton_clicked()
     panoramaResultDisplayed = true;
 }
 
-void MainWindow::on_frame1Button_clicked()
+void MainWindow::applyFaceMask(const QString &maskPath, int maskType)
 {
     if (currentPanorama.empty()) {
-        QMessageBox::warning(this, "Error", "No panorama image to apply a frame to.");
+        QMessageBox::warning(this, "Error", "No panorama image to apply a mask to.");
         return;
     }
 
-    // Load the frame image (must have alpha channel)
-    cv::Mat frameImage = cv::imread("frame1.png", cv::IMREAD_UNCHANGED);
-    if (frameImage.empty()) {
-        QMessageBox::warning(this, "Error", "Could not load frame1.png. Make sure it's in the build directory.");
+    // If this mask is already applied, remove it
+    if (appliedFrameType == maskType) {
+        cv::Mat displayablePanorama;
+        cv::cvtColor(currentPanorama, displayablePanorama, cv::COLOR_BGR2RGB);
+        QImage qimg(displayablePanorama.data, displayablePanorama.cols, displayablePanorama.rows, displayablePanorama.step, QImage::Format_RGB888);
+        ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
+        ui->statusbar->showMessage("Mask removed.", 3000);
+        appliedFrameType = 0;
         return;
     }
 
-    if (frameImage.channels() != 4) {
-        QMessageBox::warning(this, "Error", "Frame image must be a PNG with a transparent background.");
+    // --- Apply the new mask ---
+
+    // Load the mask image
+    cv::Mat maskImage = cv::imread(maskPath.toStdString(), cv::IMREAD_UNCHANGED);
+    if (maskImage.empty()) {
+        QMessageBox::warning(this, "Error", QString("Could not load %1. Make sure it's in the build directory.").arg(maskPath));
+        return;
+    }
+    if (maskImage.channels() != 4) {
+        QMessageBox::warning(this, "Error", QString("Mask image %1 must be a PNG with a transparent background.").arg(maskPath));
         return;
     }
 
-    // The panorama to draw on
-    cv::Mat framedPanorama = currentPanorama.clone();
+    // Prepare the image for face detection
+    cv::Mat grayPanorama;
+    cv::cvtColor(currentPanorama, grayPanorama, cv::COLOR_BGR2GRAY);
+    cv::equalizeHist(grayPanorama, grayPanorama);
 
-    // Resize frame to match panorama
-    cv::resize(frameImage, frameImage, framedPanorama.size());
+    // Detect faces
+    std::vector<cv::Rect> faces;
+    face_cascade.detectMultiScale(grayPanorama, faces);
 
-    // Split frame into BGR and alpha mask
-    std::vector<cv::Mat> frame_channels;
-    cv::split(frameImage, frame_channels);
-    cv::Mat frame_bgr;
-    cv::merge(std::vector<cv::Mat>{frame_channels[0], frame_channels[1], frame_channels[2]}, frame_bgr);
-    cv::Mat alpha_mask = frame_channels[3];
+    if (faces.empty()) {
+        QMessageBox::information(this, "No Faces", "No faces were detected in the panorama.");
+        return;
+    }
 
-    // Overlay the frame onto the panorama where the alpha mask is non-zero
-    frame_bgr.copyTo(framedPanorama, alpha_mask);
+    // Create a copy of the panorama to draw on
+    cv::Mat maskedPanorama = currentPanorama.clone();
+
+    // Loop over detected faces
+    for (const auto& face : faces) {
+        // Resize mask to fit the face
+        cv::Mat resizedMask;
+        cv::resize(maskImage, resizedMask, face.size());
+
+        // Split resized mask into BGR and alpha channels
+        std::vector<cv::Mat> mask_channels;
+        cv::split(resizedMask, mask_channels);
+        cv::Mat mask_bgr;
+        cv::merge(std::vector<cv::Mat>{mask_channels[0], mask_channels[1], mask_channels[2]}, mask_bgr);
+        cv::Mat alpha_mask = mask_channels[3];
+
+        // Define Region of Interest (ROI) on the panorama
+        cv::Mat roi = maskedPanorama(face);
+
+        // Overlay the mask onto the ROI
+        mask_bgr.copyTo(roi, alpha_mask);
+    }
 
     // Convert the final result for display
-    cv::cvtColor(framedPanorama, framedPanorama, cv::COLOR_BGR2RGB);
-    QImage qimg(framedPanorama.data, framedPanorama.cols, framedPanorama.rows, framedPanorama.step, QImage::Format_RGB888);
+    cv::cvtColor(maskedPanorama, maskedPanorama, cv::COLOR_BGR2RGB);
+    QImage qimg(maskedPanorama.data, maskedPanorama.cols, maskedPanorama.rows, maskedPanorama.step, QImage::Format_RGB888);
     ui->displayLabel->setPixmap(QPixmap::fromImage(qimg));
 
-    ui->statusbar->showMessage("Frame applied.", 3000);
+    ui->statusbar->showMessage(QString("Applied %1 mask to %2 face(s).").arg(maskPath).arg(faces.size()), 3000);
+    appliedFrameType = maskType;
+}
+
+
+void MainWindow::on_frame1Button_clicked()
+{
+    applyFaceMask("minionframe.png", 1);
+}
+
+void MainWindow::on_pororoFrameButton_clicked()
+{
+    applyFaceMask("pororo.png", 2);
 }

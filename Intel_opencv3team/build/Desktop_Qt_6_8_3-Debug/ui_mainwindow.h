@@ -35,6 +35,10 @@ public:
     QPushButton *captureButton;
     QPushButton *doneButton;
     QSpacerItem *horizontalSpacer_2;
+    QWidget *widget;
+    QHBoxLayout *frameButtonLayout;
+    QSpacerItem *horizontalSpacer_3;
+    QSpacerItem *horizontalSpacer_4;
     QMenuBar *menubar;
     QStatusBar *statusbar;
 
@@ -77,6 +81,21 @@ public:
 
 
         verticalLayout->addWidget(menuWidget);
+
+        widget = new QWidget(centralwidget);
+        widget->setObjectName("widget");
+        frameButtonLayout = new QHBoxLayout(widget);
+        frameButtonLayout->setObjectName("frameButtonLayout");
+        horizontalSpacer_3 = new QSpacerItem(40, 20, QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
+
+        frameButtonLayout->addItem(horizontalSpacer_3);
+
+        horizontalSpacer_4 = new QSpacerItem(40, 20, QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
+
+        frameButtonLayout->addItem(horizontalSpacer_4);
+
+
+        verticalLayout->addWidget(widget);
 
         verticalLayout->setStretch(0, 2);
         verticalLayout->setStretch(1, 1);

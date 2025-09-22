@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <opencv2/videoio.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/objdetect.hpp>
 #include <vector>
 
 QT_BEGIN_NAMESPACE
@@ -28,6 +29,7 @@ private slots:
     void on_captureButton_clicked();
     void on_doneButton_clicked();
     void on_frame1Button_clicked();
+    void on_pororoFrameButton_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -38,5 +40,11 @@ private:
     int captureCount;
     cv::Mat currentPanorama;
     QPushButton *frame1Button;
+    QPushButton *pororoFrameButton;
+    int appliedFrameType; // 0 = none, 1 = frame1, 2 = pororo
+    cv::CascadeClassifier face_cascade;
+
+private:
+    void applyFaceMask(const QString &maskPath, int maskType);
 };
 #endif // MAINWINDOW_H

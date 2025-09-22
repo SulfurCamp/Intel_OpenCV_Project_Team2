@@ -22,7 +22,7 @@ FORMS += \
 
 # OpenCV Integration
 INCLUDEPATH += /usr/local/include/opencv4
-LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_stitching
+LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_stitching -lopencv_objdetect
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
