@@ -32,24 +32,37 @@ static cv::Rect largestAxisAlignedRect(const cv::Mat& bin) {
 
 static cv::Mat crop_nonblack(const cv::Mat& pano) {
     CV_Assert(pano.type() == CV_8UC3 || pano.type() == CV_8UC4);
-    cv::Mat bgr; if (pano.channels() == 4) cv::cvtColor(pano, bgr, cv::COLOR_BGRA2BGR); else bgr = pano;
-    cv::Mat mask; cv::inRange(bgr, cv::Scalar(1,1,1), cv::Scalar(255,255,255), mask);
-    int k = std::max(3, ((bgr.cols + bgr.rows) / 2) / 30); if (k % 2 == 0) ++k;
+    cv::Mat bgr;
+    if (pano.channels() == 4)
+        cv::cvtColor(pano, bgr, cv::COLOR_BGRA2BGR);
+    else bgr = pano;
+    cv::Mat mask;
+    cv::inRange(bgr, cv::Scalar(1,1,1), cv::Scalar(255,255,255), mask);
+    int k = std::max(3, ((bgr.cols + bgr.rows) / 2) / 30);
+    if (k % 2 == 0)
+        ++k;
     cv::Mat kernel = getStructuringElement(cv::MORPH_RECT, cv::Size(k,k));
     cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel, cv::Point(-1,-1), 1);
-    if (cv::countNonZero(mask) == 0) return pano.clone();
+    if (cv::countNonZero(mask) == 0)
+        return pano.clone();
     cv::Rect r = largestAxisAlignedRect(mask);
     r &= cv::Rect(0,0,pano.cols,pano.rows);
-    if (r.width <= 0 || r.height <= 0) return pano.clone();
+    if (r.width <= 0 || r.height <= 0)
+        return pano.clone();
     return pano(r).clone();
 }
 
-
 cv::Mat stitchImages(const std::vector<cv::Mat>& images, bool& success) {
-    success = false; cv::Mat pano;
-    if (images.size() < 2) return pano;
+    success = false;
+    cv::Mat pano;
+    if (images.size() < 2)
+        return pano;
     auto stitcher = cv::Stitcher::create(cv::Stitcher::PANORAMA);
     auto status = stitcher->stitch(images, pano);
-    if (status == cv::Stitcher::OK && !pano.empty()) { success = true; return crop_nonblack(pano); }
+    if (status == cv::Stitcher::OK && !pano.empty())
+    {
+        success = true;
+        return crop_nonblack(pano);
+    }
     return pano;
 }
