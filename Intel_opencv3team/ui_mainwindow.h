@@ -97,8 +97,7 @@ public:
 
         verticalLayout->addWidget(widget);
 
-        verticalLayout->setStretch(0, 2);
-        verticalLayout->setStretch(1, 1);
+        verticalLayout->setStretch(0, 1);
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName(QString::fromUtf8("menubar"));
